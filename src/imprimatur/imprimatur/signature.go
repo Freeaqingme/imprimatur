@@ -11,8 +11,8 @@ import (
 )
 
 type signature struct {
-	sig []byte
-	key *key
+	Sig []byte
+	Key *key
 }
 
 type key struct {
@@ -23,20 +23,20 @@ type key struct {
 func NewKey(input *agent.Key) (*key, error) {
 	rsaPubKey, ok := input.Public().(*rsa.PublicKey)
 	if !ok {
-		return nil, errors.New("returned key by pgp was not an RSA Public Key")
+		return nil, errors.New("returned Key by pgp was not an RSA Public Key")
 	}
 
-	return &key{rsaPubKey, input }, nil
+	return &key{rsaPubKey, input}, nil
 }
 
 func newSignature(sig []byte, key *key) *signature {
 	return &signature{
-		sig: sig,
-		key: key,
+		Sig: sig,
+		Key: key,
 	}
 }
 
-func (k *key) fingerPrintSHA256() string {
+func (k *key) FingerPrintSHA256() string {
 	hash := sha256.Sum256(x509.MarshalPKCS1PublicKey(k.PublicKey))
 	hexarray := make([]string, len(hash))
 	for i, c := range hash {

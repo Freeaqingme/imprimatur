@@ -1,7 +1,7 @@
 module imprimatur
 
 require (
-	github.com/abesto/sexp v0.0.1 // indirect
+	github.com/Freeaqingme/go-gpg-agent-client v0.0.0-20181224204831-dd66813d0901
 	github.com/inconshreveable/mousetrap v1.0.0 // indirect
 	github.com/mitchellh/go-homedir v1.0.0 // indirect
 	github.com/prep/gpg v0.0.0-20180228092816-62a8dfe282c5

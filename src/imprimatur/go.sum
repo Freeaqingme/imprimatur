@@ -1,3 +1,5 @@
+github.com/Freeaqingme/go-gpg-agent-client v0.0.0-20181224204831-dd66813d0901 h1:mKAUlBFphlHcWheU9vRJX2ph+o94XO156ErtY4tJXS4=
+github.com/Freeaqingme/go-gpg-agent-client v0.0.0-20181224204831-dd66813d0901/go.mod h1:GxjIM2LiWppUWt7VU491jDXet03fUKG9bl4fZpFqQWg=
 github.com/abesto/sexp v0.0.1 h1:mQef7+o8DT1dRgGcuxx3SxTKeMdfSiQmam4r0qGSs9M=
 github.com/abesto/sexp v0.0.1/go.mod h1:0sWnr6ZaslzIlA5VNPLb6SgKyo+/N4IDIybjhURoHXI=
 github.com/armon/consul-api v0.0.0-20180202201655-eb2c6b5be1b6/go.mod h1:grANhF5doyWs3UAsr3K4I6qtAmlQcZDesFNEHPZAzj8=

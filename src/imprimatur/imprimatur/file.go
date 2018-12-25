@@ -2,34 +2,59 @@ package imprimatur
 
 import (
 	"bytes"
+	"crypto/sha512"
+	"crypto/x509"
 	"encoding/base64"
 	"errors"
 	"fmt"
 	"io/ioutil"
 	"os"
 	"os/user"
+	"regexp"
+	"strconv"
 	"strings"
 	"time"
 )
 
 const header = "\000\000\000\000imprimatur\000v1.0\000\000\000\000\n"
 
+var re = regexp.MustCompile("TIME=(?P<time>\\d+);FULLNAME=(?P<fullname>[^;]*);USERNAME=(?P<Username>[^;]*);HOSTNAME=(?P<hostname>[^;]*);PUBKEY=(?P<pubkey>[^;\n]*)(?:;(?P<fowardCompat>.*[^\n]))?\n(?P<Sig>.*[^\n])\n")
+
 type file struct {
 	origPath string
 	contents []byte
 
-	time time.Time
-	key *key
+	time     time.Time
+	key      *key
 	fullName string
 	username string
 	hostname string
-	newSig *signature
+	newSig   *signature
+
+	ExistingSigs []existingSig
 }
 
-func (s *signer) loadFile(path string) error {
+type existingSig struct {
+	Signature   *signature
+	ContentHash []byte
+
+	Timestamp time.Time
+	FullName  string
+	Username  string
+	Host      string
+
+	ForwardCompat []byte
+}
+
+func (s *signer) loadFile(path string) (err error) {
+	s.file, err = LoadFile(path)
+	return
+}
+
+func LoadFile(path string) (*file, error) {
 	contents, err := ioutil.ReadFile(path)
 	if err != nil {
-		return err
+		return nil, err
 	}
 
 	f := &file{
@@ -38,9 +63,8 @@ func (s *signer) loadFile(path string) error {
 	}
 
 	f.parse()
-	s.file = f
 
-	return nil
+	return f, nil
 }
 
 func (f *file) addSignerMetadata(key *key) {
@@ -56,10 +80,10 @@ func (f *file) addSignerMetadata(key *key) {
 		}
 	}
 
-	f.hostname,_ = os.Hostname()
+	f.hostname, _ = os.Hostname()
 }
 
-func (f *file) addSignature(sig *signature){
+func (f *file) addSignature(sig *signature) {
 	if f.newSig != nil {
 		panic("can only add a new signature once per run")
 	}
@@ -73,7 +97,54 @@ func (f *file) parse() []signature {
 		return []signature{}
 	}
 
-	return []signature{} // todo
+	hasher := sha512.New()
+	hasher.Write(f.contents[0 : headerPos+len(header)])
+
+	signaturesContent := f.contents[headerPos+len(header):]
+
+	matches := re.FindAllSubmatch(signaturesContent, -1)
+	f.ExistingSigs = make([]existingSig, len(matches))
+	for i, match := range matches {
+		lines := bytes.Split(match[0], []byte("\n"))
+		hasher.Write(append(lines[0], []byte("\n")...))
+
+		timestamp, _ := strconv.ParseInt(string(match[1]), 10, 64)
+
+		rawKey, err := base64.StdEncoding.DecodeString(string(match[5]))
+		if err != nil {
+			panic("Invalid Key: " + err.Error())
+		}
+		pubKey, err := x509.ParsePKCS1PublicKey([]byte(rawKey))
+		if err != nil {
+			panic("Could not parse public Key: " + err.Error())
+		}
+
+		sig, err := base64.StdEncoding.DecodeString(string(match[7]))
+		if err != nil {
+			panic("Could not decode signature: " + err.Error())
+		}
+
+		existingSig := existingSig{
+			Signature: &signature{
+				Sig: sig,
+				Key: &key{
+					PublicKey: pubKey,
+				},
+			},
+			ContentHash: hasher.Sum(nil),
+
+			Timestamp:     time.Unix(0, timestamp),
+			FullName:      string(match[2]),
+			Username:      string(match[3]),
+			Host:          string(match[4]),
+			ForwardCompat: match[6],
+		}
+
+		hasher.Write(append(lines[1], []byte("\n")...))
+		f.ExistingSigs[i] = existingSig
+	}
+
+	return []signature{} // todo?
 }
 
 func (f *file) render(errorOnMissingSig bool) []byte {
@@ -86,7 +157,7 @@ func (f *file) render(errorOnMissingSig bool) []byte {
 		return newContents
 	}
 
-	san := func(input string) string { return strings.Replace(input, ";", "", -1); }
+	san := func(input string) string { return strings.Replace(input, ";", "", -1) }
 	key := base64.StdEncoding.EncodeToString(f.key.Marshal())
 	metadata := fmt.Sprintf("TIME=%d;FULLNAME=%s;USERNAME=%s;HOSTNAME=%s;PUBKEY=%s\n",
 		f.time.UnixNano(), san(f.fullName), san(f.username), san(f.hostname), key)
@@ -99,11 +170,11 @@ func (f *file) render(errorOnMissingSig bool) []byte {
 		return newContents
 	}
 
-	if f.newSig.key != f.key {
-		panic("Signature key does not match with public key")
+	if f.newSig.Key != f.key {
+		panic("Signature Key does not match with public Key")
 	}
 
-	sig := base64.StdEncoding.EncodeToString(f.newSig.sig) + "\n"
+	sig := base64.StdEncoding.EncodeToString(f.newSig.Sig) + "\n"
 	newContents = append(newContents, []byte(sig)...)
 
 	return newContents

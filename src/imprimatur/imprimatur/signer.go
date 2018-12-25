@@ -11,12 +11,12 @@ import (
 
 type signer struct {
 	gpgSocketPath string
-	file *file
+	file          *file
 }
 
 func Sign(keygrip, sourcePath string) {
 
-	signer,err := NewSigner(sourcePath)
+	signer, err := NewSigner(sourcePath)
 	if err != nil {
 		fmt.Printf("%s", err.Error())
 		os.Exit(1)
@@ -29,7 +29,6 @@ func Sign(keygrip, sourcePath string) {
 	}
 
 	signer.file.addSignerMetadata(key)
-
 	sig, err := signer.GpgSign(key)
 	if err != nil {
 		fmt.Printf("Could not sign %s: %s", sourcePath, err.Error())
@@ -37,21 +36,20 @@ func Sign(keygrip, sourcePath string) {
 	}
 
 	signer.file.addSignature(sig)
-
 	dstPath, err := signer.file.write()
 	if err != nil {
 		fmt.Printf("Could not write file: " + err.Error())
 		os.Exit(1)
 	}
 
-	fmt.Println(fmt.Sprintf("Signed file %s into %s using key with finger print: %s",
-		sourcePath, dstPath, signer.file.key.fingerPrintSHA256()))
+	fmt.Println(fmt.Sprintf("Signed file %s into %s using Key with finger print: %s",
+		sourcePath, dstPath, signer.file.key.FingerPrintSHA256()))
 
 	// Success!
 }
 
 func NewSigner(path string) (*signer, error) {
-	signer := &signer {}
+	signer := &signer{}
 
 	gpgSocketPath := os.Getenv("GPG_AGENT_INFO")
 	if gpgSocketPath == "" {

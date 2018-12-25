@@ -11,7 +11,6 @@ import (
 	_ "crypto/sha256"
 )
 
-
 func (s *signer) GpgSign(key *key) (*signature, error) {
 	hasher := sha512.New()
 	hasher.Write(s.file.render(false))
@@ -20,9 +19,9 @@ func (s *signer) GpgSign(key *key) (*signature, error) {
 	if err != nil {
 		return nil, err
 	}
-	return newSignature(sig, key), nil
+	out, err := newSignature(sig, key), nil
+	return out, err
 }
-
 
 func (s *signer) GetKey(keygrip string) (*key, error) {
 	conn, err := agent.Dial(s.gpgSocketPath, []string{})
@@ -41,5 +40,5 @@ func (s *signer) GetKey(keygrip string) (*key, error) {
 		}
 	}
 
-	return nil, errors.New("No key by keygrip " + keygrip + " could be found")
+	return nil, errors.New("No Key by keygrip " + keygrip + " could be found")
 }
