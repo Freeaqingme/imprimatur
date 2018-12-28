@@ -13,7 +13,7 @@ import (
 
 func (s *signer) GpgSign(key *key) (*signature, error) {
 	hasher := sha512.New()
-	hasher.Write(s.file.render(false))
+	hasher.Write(s.file.Render(false))
 
 	sig, err := key.Sign(rand.Reader, hasher.Sum(nil), crypto.SHA512)
 	if err != nil {

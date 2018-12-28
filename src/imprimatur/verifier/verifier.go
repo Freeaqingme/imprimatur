@@ -15,13 +15,13 @@ func Verify(path string) {
 	}
 
 	for i, sig := range file.ExistingSigs {
-		validMsg := "Signature Valid"
+		validMsg := "INVALID SIGNATURE!"
 		err := rsa.VerifyPKCS1v15(sig.Signature.Key.PublicKey, crypto.SHA512, sig.ContentHash, sig.Signature.Sig)
-		if err != nil {
-			validMsg = "INVALID SIGNATURE!"
+		if err == nil {
+			validMsg = "Signature Valid"
 		}
 
-		fmt.Println(fmt.Sprintf("%s (%s@%s): %s\n\tDate:\t\t%s\n\tFingerprint:\t%s",
+		fmt.Println(fmt.Sprintf("%s (%s@%s): %s\n\tDate:\t\t\t%s\n\tKey Fingerprint:\t%s",
 			sig.FullName,
 			sig.Username,
 			sig.Host,

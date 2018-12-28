@@ -11,7 +11,7 @@ import (
 
 type signer struct {
 	gpgSocketPath string
-	file          *file
+	file          *File
 }
 
 func Sign(keygrip, sourcePath string) {
@@ -38,11 +38,11 @@ func Sign(keygrip, sourcePath string) {
 	signer.file.addSignature(sig)
 	dstPath, err := signer.file.write()
 	if err != nil {
-		fmt.Printf("Could not write file: " + err.Error())
+		fmt.Printf("Could not write File: " + err.Error())
 		os.Exit(1)
 	}
 
-	fmt.Println(fmt.Sprintf("Signed file %s into %s using Key with finger print: %s",
+	fmt.Println(fmt.Sprintf("Signed File %s into %s using Key with finger print: %s",
 		sourcePath, dstPath, signer.file.key.FingerPrintSHA256()))
 
 	// Success!

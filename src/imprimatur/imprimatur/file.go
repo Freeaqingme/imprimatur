@@ -14,13 +14,14 @@ import (
 	"strconv"
 	"strings"
 	"time"
+	"net/http"
 )
 
 const header = "\000\000\000\000imprimatur\000v1.0\000\000\000\000\n"
 
 var re = regexp.MustCompile("TIME=(?P<time>\\d+);FULLNAME=(?P<fullname>[^;]*);USERNAME=(?P<Username>[^;]*);HOSTNAME=(?P<hostname>[^;]*);PUBKEY=(?P<pubkey>[^;\n]*)(?:;(?P<fowardCompat>.*[^\n]))?\n(?P<Sig>.*[^\n])\n")
 
-type file struct {
+type File struct {
 	origPath string
 	contents []byte
 
@@ -51,13 +52,13 @@ func (s *signer) loadFile(path string) (err error) {
 	return
 }
 
-func LoadFile(path string) (*file, error) {
+func LoadFile(path string) (*File, error) {
 	contents, err := ioutil.ReadFile(path)
 	if err != nil {
 		return nil, err
 	}
 
-	f := &file{
+	f := &File{
 		contents: contents,
 		origPath: path,
 	}
@@ -67,7 +68,7 @@ func LoadFile(path string) (*file, error) {
 	return f, nil
 }
 
-func (f *file) addSignerMetadata(key *key) {
+func (f *File) addSignerMetadata(key *key) {
 	f.time = time.Now()
 	f.key = key
 
@@ -83,7 +84,7 @@ func (f *file) addSignerMetadata(key *key) {
 	f.hostname, _ = os.Hostname()
 }
 
-func (f *file) addSignature(sig *signature) {
+func (f *File) addSignature(sig *signature) {
 	if f.newSig != nil {
 		panic("can only add a new signature once per run")
 	}
@@ -91,7 +92,7 @@ func (f *file) addSignature(sig *signature) {
 	f.newSig = sig
 }
 
-func (f *file) parse() []signature {
+func (f *File) parse() []signature {
 	headerPos := bytes.LastIndex(f.contents, []byte(header))
 	if -1 == headerPos {
 		return []signature{}
@@ -147,7 +148,7 @@ func (f *file) parse() []signature {
 	return []signature{} // todo?
 }
 
-func (f *file) render(errorOnMissingSig bool) []byte {
+func (f *File) Render(errorOnMissingSig bool) []byte {
 	newContents := f.contents
 	if -1 == bytes.LastIndex(f.contents, []byte(header)) {
 		newContents = append(newContents, []byte(header)...)
@@ -165,7 +166,7 @@ func (f *file) render(errorOnMissingSig bool) []byte {
 
 	if f.newSig == nil {
 		if errorOnMissingSig {
-			panic("Asked to render a file without a set signature")
+			panic("Asked to Render a File without a set signature")
 		}
 		return newContents
 	}
@@ -180,7 +181,7 @@ func (f *file) render(errorOnMissingSig bool) []byte {
 	return newContents
 }
 
-func (f *file) write() (string, error) {
+func (f *File) write() (string, error) {
 	path, err := f.getDstPath()
 	if err == nil {
 		err = f.writeToPath(path)
@@ -189,13 +190,13 @@ func (f *file) write() (string, error) {
 	return path, err
 }
 
-func (f *file) writeToPath(path string) error {
-	err := ioutil.WriteFile(path, f.render(true), 0644)
+func (f *File) writeToPath(path string) error {
+	err := ioutil.WriteFile(path, f.Render(true), 0644)
 
 	return err
 }
 
-func (f *file) getDstPath() (string, error) {
+func (f *File) getDstPath() (string, error) {
 	extPos := strings.LastIndex(f.origPath, ".")
 	if strings.LastIndex(f.origPath, "/") > extPos {
 		extPos = -1 // ./foobar: the last dot is not an extension separator
@@ -226,4 +227,14 @@ func (f *file) getDstPath() (string, error) {
 	}
 
 	return "", errors.New("no path could be determined")
+}
+
+func (f *File) GetContentType() string {
+
+	// Only the first 512 bytes are used to sniff the content type.
+	buffer := f.contents[0:512]
+
+	// Use the net/http package's handy DectectContentType function. Always returns a valid
+	// content-type by returning "application/octet-stream" if no others seemed to match.
+	return string(http.DetectContentType(buffer))
 }
