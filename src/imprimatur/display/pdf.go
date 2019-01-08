@@ -22,13 +22,16 @@ func overlayPdf(f *imprimatur.File) ([]byte, error) {
 	file.Write(f.Render(false))
 
 	signaturePage, err := createSignaturePage(f)
-	defer os.Remove(signaturePage.Name())
-
-	resultingFile, err := ioutil.TempFile("", "imprimatur")
-	defer os.Remove(resultingFile.Name())
 	if err != nil {
 		return nil, err
 	}
+	defer os.Remove(signaturePage.Name())
+
+	resultingFile, err := ioutil.TempFile("", "imprimatur")
+	if err != nil {
+		return nil, err
+	}
+	defer os.Remove(resultingFile.Name())
 
 	// see: https://superuser.com/questions/54041/how-to-merge-pdfs-using-imagemagick-resolution-problem
 	cmd := exec.Command("gs", "-dBATCH", "-dNOPAUSE", "-q", "-sDEVICE=pdfwrite",
@@ -45,7 +48,7 @@ func createSignaturePage(f *imprimatur.File) (*os.File, error) {
 	pdf := gofpdf.New("P", "mm", "A4", "")
 
 	content, err := createSignaturePageContents(f)
-	if err == nil {
+	if err != nil {
 		return nil, err
 	}
 	pdf.AddPage()
